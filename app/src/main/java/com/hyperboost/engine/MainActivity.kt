@@ -160,11 +160,12 @@ class MainActivity : ComponentActivity() {
             // build. Mandatory and blocked updates always re-prompt.
             if (!manual && !mandatory && prefs.getInt("dismissed_code", 0) == update.versionCode) return
 
+            val notes = UpdateManager.formatReleaseNotes(update.notes).take(1200)
             val builder = AlertDialog.Builder(this)
                 .setTitle(if (mandatory) "Update required" else "Update available")
                 .setMessage("HyperBoost Engine Pro ${update.version} is available." +
                     (if (mandatory) "\n\nYour installed version is no longer supported. Update to continue." else "") +
-                    (if (update.notes.isNotBlank()) "\n\n" + update.notes.take(900) else ""))
+                    (if (notes.isNotBlank()) "\n\n$notes" else ""))
                 .setPositiveButton("Download and install", null)
                 .setCancelable(!mandatory)
             if (!mandatory) builder.setNegativeButton("Later", null)

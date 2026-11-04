@@ -2,10 +2,13 @@
 package com.hyperboost.engine.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -44,11 +48,19 @@ import com.hyperboost.engine.core.PerformanceEngine
 import com.hyperboost.engine.core.ShizukuManager
 import com.hyperboost.engine.telemetry.CapabilityReporter
 import com.hyperboost.engine.ui.components.HbCard
+import com.hyperboost.engine.ui.components.HbIconBadge
+import com.hyperboost.engine.ui.components.HbSwitch
+import com.hyperboost.engine.ui.components.SectionHeader
 import com.hyperboost.engine.ui.components.StatChip
 import com.hyperboost.engine.ui.components.StatTile
 import com.hyperboost.engine.ui.theme.DangerRed
+import com.hyperboost.engine.ui.theme.DarkBackground
+import com.hyperboost.engine.ui.theme.ElectricOrange
 import com.hyperboost.engine.ui.theme.NeonCyan
+import com.hyperboost.engine.ui.theme.NeonCyanVariant
 import com.hyperboost.engine.ui.theme.NeonGreen
+import com.hyperboost.engine.ui.theme.TextMuted
+import com.hyperboost.engine.ui.theme.TextPrimary
 import com.hyperboost.engine.ui.theme.TextSecondary
 
 /** Top-level sections of the dashboard. Each tab shows a focused set of cards. */
@@ -103,6 +115,7 @@ fun DashboardScreen(
     var showCrosshairDialog by remember { mutableStateOf(false) }
     var showAdbGuideDialog by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var configuringModeGame by remember { mutableStateOf<MainViewModel.GameProfile?>(null) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val currentTab = DashTab.entries[selectedTab]
@@ -115,12 +128,19 @@ fun DashboardScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF0B1622), MaterialTheme.colorScheme.background)
+                )
+            ),
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Column {
                 UnityBanner()
+                HorizontalDivider(color = Color(0x14FFFFFF), thickness = 1.dp)
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 0.dp
@@ -133,8 +153,10 @@ fun DashboardScreen(
                             label = { Text(tab.label) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = NeonCyan,
-                                selectedTextColor = NeonCyan,
-                                indicatorColor = NeonCyan.copy(alpha = 0.16f)
+                                selectedTextColor = TextPrimary,
+                                indicatorColor = NeonCyan.copy(alpha = 0.14f),
+                                unselectedIconColor = TextMuted,
+                                unselectedTextColor = TextMuted
                             )
                         )
                     }
@@ -144,56 +166,106 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "HyperBoost",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 0.5.sp
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Brush.linearGradient(listOf(NeonCyan, NeonGreen))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = DarkBackground,
+                                modifier = Modifier.size(23.dp)
                             )
-                        )
-                        Text(
-                            text = "Performance engine",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        }
+                        Column {
+                            Text(
+                                text = "HyperBoost",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.3.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "PERFORMANCE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    letterSpacing = 1.1.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 },
                 actions = {
-                    if (isBusy) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = NeonCyan
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
                     StatChip(
-                        label = if (shizukuAuthorized) "SHIZUKU" else "NO SHIZUKU",
+                        label = if (shizukuAuthorized) "SHIZUKU" else "NO ADB",
                         color = if (shizukuAuthorized) NeonGreen else DangerRed
                     )
                     IconButton(
                         onClick = onCheckForUpdates,
                         modifier = Modifier.testTag("check_updates_button")
                     ) {
-                        Icon(Icons.Default.SystemUpdate, contentDescription = "Check for updates", tint = NeonCyan)
-                    }
-                    IconButton(onClick = { showFeedbackDialog = true }) {
-                        Icon(Icons.Default.Feedback, contentDescription = "Send feedback", tint = NeonCyan)
-                    }
-                    IconButton(
-                        onClick = { viewModel.reevaluateShizuku() },
-                        modifier = Modifier.testTag("refresh_status_button")
-                    ) {
                         Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "Refresh status",
+                            Icons.Default.SystemUpdate,
+                            contentDescription = "Check for updates",
                             tint = NeonCyan
                         )
                     }
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "More actions",
+                                tint = TextSecondary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Send feedback") },
+                                leadingIcon = { Icon(Icons.Default.Feedback, contentDescription = null) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showFeedbackDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Refresh status") },
+                                leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                                modifier = Modifier.testTag("refresh_status_button"),
+                                onClick = {
+                                    showOverflowMenu = false
+                                    viewModel.reevaluateShizuku()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Setup guide") },
+                                leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showAdbGuideDialog = true
+                                }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = Color.Transparent,
+                    titleContentColor = TextPrimary,
+                    actionIconContentColor = TextSecondary
                 )
             )
         }
@@ -203,8 +275,8 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 6.dp, bottom = 28.dp)
         ) {
             // Shizuku status stays visible on every tab.
             item(key = "shizuku_status") {
@@ -441,7 +513,7 @@ private fun FeedbackDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Switch(
+                    HbSwitch(
                         checked = shareCapability,
                         onCheckedChange = { enabled ->
                             shareCapability = enabled
@@ -492,7 +564,8 @@ fun MasterTurboHeroCard(
 ) {
     val safeTotal = if (totalCount <= 0) 1 else totalCount
     val shownCount = if (isActive) totalCount else activeCount
-    val progress = if (isActive) 1f else (activeCount.toFloat() / safeTotal).coerceIn(0f, 1f)
+    val targetProgress = if (isActive) 1f else (activeCount.toFloat() / safeTotal).coerceIn(0f, 1f)
+    val progress by animateFloatAsState(targetValue = targetProgress, label = "master_boost_progress")
     val statusLabel = when {
         isBusy -> "WORKING"
         isActive -> "ENGAGED"
@@ -508,40 +581,42 @@ fun MasterTurboHeroCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (isActive) Modifier.background(
-                            Brush.linearGradient(listOf(NeonCyan, NeonGreen))
-                        ) else Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
-                    ),
-                contentAlignment = Alignment.Center
+            HbIconBadge(
+                icon = Icons.Default.Bolt,
+                active = isActive,
+                tint = NeonCyan,
+                size = 56.dp
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Bolt,
-                    contentDescription = null,
-                    tint = if (isActive) Color(0xFF001E2B) else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Master Boost",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.3.sp
+                        ),
+                        color = TextPrimary
+                    )
+                    if (isActive || isBusy) {
+                        StatChip(
+                            label = if (isBusy) "WORKING" else "ACTIVE",
+                            color = if (isBusy) NeonCyan else NeonGreen
+                        )
+                    }
+                }
                 Text(
-                    text = "Master Boost",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.4.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (isActive) "All subsystems engaged" else "One tap to accelerate your games",
+                    text = if (isActive) "All supported subsystems are engaged" else "One tap to apply every supported booster",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = TextSecondary
                 )
             }
-            Switch(
+            HbSwitch(
                 checked = isActive,
                 onCheckedChange = { onToggle() },
                 enabled = !isBusy,
@@ -571,15 +646,20 @@ fun MasterTurboHeroCard(
             )
         }
 
-        LinearProgressIndicator(
-            progress = { progress },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .clip(RoundedCornerShape(3.dp)),
-            color = if (isActive) NeonGreen else NeonCyan,
-            trackColor = Color(0x1FFFFFFF)
-        )
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color(0x1FFFFFFF))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .fillMaxHeight()
+                    .background(Brush.horizontalGradient(listOf(NeonCyan, NeonGreen)))
+            )
+        }
     }
 }
 
@@ -605,17 +685,20 @@ fun EasyEnableOptimizationSection(
     onSelectDns: (String?) -> Unit,
     onTrimCaches: () -> Unit
 ) {
+    val activeCount = listOf(
+        isTouchBoostActive,
+        isZeroAnimationActive,
+        isWifiGamingActive,
+        isVulkanActive,
+        isSurfaceFlingerUncapped
+    ).count { it }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "EASY ROOTLESS BOOST MODULES",
-            style = MaterialTheme.typography.labelMedium.copy(
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = MaterialTheme.colorScheme.primary
+        SectionHeader(
+            title = "Rootless boost modules",
+            trailing = "$activeCount/5 active"
         )
 
         // 1. Touch & Latency Overclock Card
@@ -671,49 +754,54 @@ fun EasyEnableOptimizationSection(
         )
 
         // Refresh Rate Selector Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+        HbCard(contentPadding = PaddingValues(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(NeonCyan.copy(alpha = 0.13f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(20.dp))
-                        Text("Refresh Rate Lock", fontWeight = FontWeight.Bold, color = Color.White)
-                    }
-                    Text("${selectedRefreshRate}Hz Active", fontSize = 12.sp, color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(19.dp))
                 }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Refresh rate lock",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary
+                    )
+                    Text(
+                        "Choose a rate reported as supported by this device",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+                StatChip(label = "${selectedRefreshRate}Hz", color = NeonGreen)
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    supportedRefreshRates.forEach { hz ->
-                        val isSelected = selectedRefreshRate == hz
-                        OutlinedButton(
-                            onClick = { onSelectRefreshRate(hz) },
-                            modifier = Modifier.weight(1f).testTag("btn_hz_$hz"),
-                            colors = if (isSelected) ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color(0xFF00E5FF),
-                                contentColor = Color(0xFF001E2B)
-                            ) else ButtonDefaults.outlinedButtonColors()
-                        ) {
-                            Text("${hz}Hz", fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                        }
-                    }
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                supportedRefreshRates.forEach { hz ->
+                    val isSelected = selectedRefreshRate == hz
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { onSelectRefreshRate(hz) },
+                        label = { Text("${hz}Hz") },
+                        modifier = Modifier.testTag("btn_hz_$hz"),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = NeonCyan.copy(alpha = 0.16f),
+                            selectedLabelColor = NeonCyan,
+                            labelColor = TextMuted
+                        )
+                    )
                 }
             }
         }
@@ -727,7 +815,7 @@ fun EasyEnableOptimizationSection(
             Card(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable {
                         when (selectedDns) {
                             null -> onSelectDns(PerformanceEngine.DNS_CLOUDFLARE)
@@ -735,8 +823,9 @@ fun EasyEnableOptimizationSection(
                             else -> onSelectDns(null)
                         }
                     },
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, Color(0x12FFFFFF))
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp),
@@ -746,8 +835,8 @@ fun EasyEnableOptimizationSection(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.Dns, contentDescription = null, tint = Color(0xFF00E5FF), modifier = Modifier.size(16.dp))
-                        Text("Gaming DNS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(Icons.Default.Dns, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(16.dp))
+                        Text("Gaming DNS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                     Text(
                         text = when (selectedDns) {
@@ -756,7 +845,7 @@ fun EasyEnableOptimizationSection(
                             else -> "Default (Tap to Switch)"
                         },
                         fontSize = 11.sp,
-                        color = if (selectedDns != null) Color(0xFF00E676) else Color(0xFF8B9CB3),
+                        color = if (selectedDns != null) NeonGreen else TextSecondary,
                         maxLines = 1
                     )
                 }
@@ -766,10 +855,11 @@ fun EasyEnableOptimizationSection(
             Card(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable { onTrimCaches() },
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, Color(0x12FFFFFF))
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp),
@@ -779,13 +869,13 @@ fun EasyEnableOptimizationSection(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.CleaningServices, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
-                        Text("Trim Caches", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(Icons.Default.CleaningServices, contentDescription = null, tint = ElectricOrange, modifier = Modifier.size(16.dp))
+                        Text("Trim Caches", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                     Text(
                         text = "Trim app caches (up to 5 GB)",
                         fontSize = 11.sp,
-                        color = Color(0xFF8B9CB3),
+                        color = TextSecondary,
                         maxLines = 1
                     )
                 }
@@ -804,17 +894,18 @@ fun GamingTuningSection(
     isShowRefreshRateActive: Boolean,
     onToggleShowRefreshRate: () -> Unit
 ) {
+    val activeCount = listOf(
+        isCachedFreezerActive,
+        isAdaptiveBrightnessOff,
+        isShowRefreshRateActive
+    ).count { it }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "MORE GAMING TUNING",
-            style = MaterialTheme.typography.labelMedium.copy(
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = MaterialTheme.colorScheme.primary
+        SectionHeader(
+            title = "More gaming tuning",
+            trailing = "$activeCount/3 active"
         )
 
         EasyToggleCard(
@@ -867,17 +958,19 @@ fun AdvancedTuningSection(
     onStorageMaintenance: () -> Unit,
     onRestoreDefaults: () -> Unit
 ) {
+    val activeCount = listOf(
+        isSustainedPerfActive,
+        isGameDndActive,
+        isPhantomProtectionActive,
+        isBatteryThrottleOff
+    ).count { it }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "ADVANCED ROOTLESS TUNING",
-            style = MaterialTheme.typography.labelMedium.copy(
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = MaterialTheme.colorScheme.primary
+        SectionHeader(
+            title = "Advanced rootless tuning",
+            trailing = "$activeCount/4 active"
         )
 
         EasyToggleCard(
@@ -925,16 +1018,18 @@ fun AdvancedTuningSection(
                 title = "Clear Background",
                 subtitle = "Kill cached apps",
                 icon = Icons.Default.Memory,
-                tint = Color(0xFF00E5FF),
-                onClick = onKillBackground
+                tint = NeonCyan,
+                onClick = onKillBackground,
+                compact = true
             )
             ActionTile(
                 modifier = Modifier.weight(1f),
                 title = "Storage Boost",
                 subtitle = "TRIM + dexopt",
                 icon = Icons.Default.Storage,
-                tint = Color(0xFFFF9100),
-                onClick = onStorageMaintenance
+                tint = ElectricOrange,
+                onClick = onStorageMaintenance,
+                compact = true
             )
         }
 
@@ -943,7 +1038,7 @@ fun AdvancedTuningSection(
             title = "Restore My Original Settings",
             subtitle = "Undo every tweak back to the exact values you had before",
             icon = Icons.Default.RestartAlt,
-            tint = Color(0xFFFF5252),
+            tint = DangerRed,
             onClick = onRestoreDefaults
         )
     }
@@ -956,27 +1051,91 @@ fun ActionTile(
     icon: ImageVector,
     tint: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .then(if (compact) Modifier.heightIn(min = 88.dp) else Modifier)
+            .clip(RoundedCornerShape(18.dp))
             .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, Color(0x12FFFFFF))
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+        if (compact) {
+            Column(
+                modifier = Modifier.padding(13.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
-                Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(tint.copy(alpha = 0.13f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(15.dp))
+                    }
+                    Text(
+                        title,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1
+                    )
+                }
+                Text(
+                    subtitle,
+                    fontSize = 10.5.sp,
+                    color = TextMuted,
+                    maxLines = 2
+                )
             }
-            Text(text = subtitle, fontSize = 11.sp, color = Color(0xFF8B9CB3))
+        } else {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(tint.copy(alpha = 0.13f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(19.dp))
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = TextPrimary,
+                        maxLines = 1
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        maxLines = 2
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
@@ -994,70 +1153,48 @@ fun EasyToggleCard(
     tag: String,
     status: String? = null
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable { onToggle() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) Color(0xFF13202E) else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = if (isActive) CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(listOf(Color(0xFF00E5FF), Color(0xFF00E676)))
-        ) else null
+    HbCard(
+        accent = if (isActive) NeonCyan else null,
+        onClick = onToggle,
+        contentPadding = PaddingValues(16.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
+            HbIconBadge(
+                icon = icon,
+                active = isActive,
+                tint = NeonCyan,
+                size = 42.dp
+            )
+            Column(
                 modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(if (isActive) Color(0xFF00E5FF) else Color(0xFF222C3D)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = if (isActive) Color(0xFF001E2B) else Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
+                if (status != null) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (isActive) Color(0xFF00E5FF) else Color.White
+                        text = status,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isActive) NeonGreen else TextMuted,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF90A4AE),
-                        fontSize = 11.sp
-                    )
-                    if (status != null) {
-                        Text(
-                            text = status,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (isActive) NeonGreen else Color(0xFF90A4AE),
-                            fontSize = 10.sp,
-                            modifier = Modifier.padding(top = 3.dp)
-                        )
-                    }
                 }
             }
-
-            Switch(
+            HbSwitch(
                 checked = isActive,
                 onCheckedChange = { onToggle() },
                 modifier = Modifier.testTag(tag)
@@ -1075,90 +1212,81 @@ fun ShizukuStatusBanner(
 ) {
     val isAuthorized = status == ShizukuManager.ShizukuStatus.AUTHORIZED
     val isRunning = status != ShizukuManager.ShizukuStatus.NOT_RUNNING
+    val accent = if (isAuthorized) NeonGreen else DangerRed
+    val title = when (status) {
+        ShizukuManager.ShizukuStatus.AUTHORIZED -> "Shizuku connected"
+        ShizukuManager.ShizukuStatus.UNAUTHORIZED -> "Shizuku permission needed"
+        ShizukuManager.ShizukuStatus.NOT_RUNNING -> "Shizuku is not running"
+    }
+    val subtitle = if (isAuthorized) {
+        "ADB-level privileges active · API v$version"
+    } else {
+        "Start Shizuku and authorize HyperBoost to use system tuning"
+    }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isAuthorized) Color(0x1A00E676) else Color(0x22FF5252)
-        ),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(
-                listOf(
-                    if (isAuthorized) Color(0xFF00E676) else Color(0xFFFF5252),
-                    Color(0xFF00E5FF)
-                )
-            )
-        )
+    HbCard(
+        accent = accent,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            HbIconBadge(
+                icon = if (isAuthorized) Icons.Default.CheckCircle else Icons.Default.Warning,
+                active = isAuthorized,
+                tint = accent,
+                size = 42.dp
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    fontSize = 11.sp
+                )
+            }
+            StatChip(
+                label = if (isAuthorized) "ACTIVE" else "ACTION",
+                color = accent
+            )
+        }
+
+        if (!isAuthorized) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isAuthorized) Icons.Default.CheckCircle else Icons.Default.Warning,
-                        contentDescription = "Status Icon",
-                        tint = if (isAuthorized) Color(0xFF00E676) else Color(0xFFFF5252),
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Column {
-                        Text(
-                            text = when (status) {
-                                ShizukuManager.ShizukuStatus.AUTHORIZED -> "Shizuku Shell Elevated"
-                                ShizukuManager.ShizukuStatus.UNAUTHORIZED -> "Shizuku Authorization Needed"
-                                ShizukuManager.ShizukuStatus.NOT_RUNNING -> "Shizuku Service Inactive"
-                            },
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
-                        )
-                        Text(
-                            text = if (isAuthorized) "Privileged Binder API v$version active"
-                            else "Rootless command execution requires Shizuku",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF90A4AE)
-                        )
-                    }
-                }
-            }
-
-            if (!isAuthorized) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (isRunning) {
-                        Button(
-                            onClick = onRequestPermission,
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("btn_request_shizuku"),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF00E5FF),
-                                contentColor = Color(0xFF001E2B)
-                            )
-                        ) {
-                            Text("Grant Permission", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = onOpenGuide,
+                if (isRunning) {
+                    Button(
+                        onClick = onRequestPermission,
                         modifier = Modifier
                             .weight(1f)
-                            .testTag("btn_shizuku_guide")
+                            .testTag("btn_request_shizuku"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NeonCyan,
+                            contentColor = DarkBackground
+                        )
                     ) {
-                        Text("Setup Guide")
+                        Text("Grant permission", fontWeight = FontWeight.Bold)
                     }
+                }
+                OutlinedButton(
+                    onClick = onOpenGuide,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("btn_shizuku_guide")
+                ) {
+                    Text("Setup guide")
                 }
             }
         }
@@ -1169,30 +1297,26 @@ fun ShizukuStatusBanner(
 fun LiveTelemetrySection(telemetry: MainViewModel.TelemetryState) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "LIVE ENGINE TELEMETRY",
-            style = MaterialTheme.typography.labelMedium.copy(
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = MaterialTheme.colorScheme.primary
+        SectionHeader(
+            title = "Live engine telemetry",
+            trailing = telemetry.fps?.let { "${it.toInt()} FPS" } ?: "no FPS data"
         )
 
         val fps = telemetry.fps
         val hz = telemetry.refreshRateHz
         val fpsColor = when {
-            fps == null -> Color(0xFF8B9CB3)
-            fps >= hz * 0.9f -> Color(0xFF00E676)
+            fps == null -> TextSecondary
+            fps >= hz * 0.9f -> NeonGreen
             fps >= hz * 0.5f -> Color(0xFFFFD54F)
-            else -> Color(0xFFFF9100)
+            else -> ElectricOrange
         }
         val jank = telemetry.jankPercentage
-        val grey = Color(0xFF8B9CB3)
+        val grey = TextSecondary
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TelemetryCard(Modifier.weight(1f), 125.dp, "LIVE FPS", Icons.Default.Speed, Color(0xFF00E5FF)) {
+            TelemetryCard(Modifier.weight(1f), 125.dp, "LIVE FPS", Icons.Default.Speed, NeonCyan) {
                 Text(
                     text = fps?.let { "${it.toInt()}" } ?: "--",
                     style = MaterialTheme.typography.headlineLarge.copy(
@@ -1210,22 +1334,22 @@ fun LiveTelemetrySection(telemetry: MainViewModel.TelemetryState) {
                     maxLines = 2
                 )
             }
-            TelemetryCard(Modifier.weight(1f), 125.dp, "FRAMETIME", Icons.Default.Timeline, Color(0xFF00E5FF)) {
+            TelemetryCard(Modifier.weight(1f), 125.dp, "FRAMETIME", Icons.Default.Timeline, NeonCyan) {
                 Text(
                     text = telemetry.frametimeMs?.let { "$it ms" } ?: "--",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     ),
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Text(
                     text = jank?.let { "Jank: $it%" } ?: "Jank: --",
                     fontSize = 11.sp,
                     color = when {
                         jank == null -> grey
-                        jank < 5f -> Color(0xFF00E676)
-                        else -> Color(0xFFFF5252)
+                        jank < 5f -> NeonGreen
+                        else -> DangerRed
                     }
                 )
                 Text(
@@ -1237,25 +1361,25 @@ fun LiveTelemetrySection(telemetry: MainViewModel.TelemetryState) {
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TelemetryCard(Modifier.weight(1f), 105.dp, "CPU / GPU", Icons.Default.Memory, Color(0xFF00E5FF)) {
+            TelemetryCard(Modifier.weight(1f), 105.dp, "CPU / GPU", Icons.Default.Memory, NeonCyan) {
                 Text(
                     text = telemetry.cpuUsagePct?.let { "${it.toInt()}% load" } ?: "-- load",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.Monospace,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 val cpuT = telemetry.cpuTempCelsius?.let { "${it.toInt()}°" } ?: "--"
                 val gpuT = telemetry.gpuTempCelsius?.let { "${it.toInt()}°" } ?: "--"
                 Text("CPU $cpuT · GPU $gpuT", fontSize = 11.sp, color = grey)
             }
-            TelemetryCard(Modifier.weight(1f), 105.dp, "MEMORY", Icons.Default.Memory, Color(0xFF00E5FF)) {
+            TelemetryCard(Modifier.weight(1f), 105.dp, "MEMORY", Icons.Default.Memory, NeonCyan) {
                 Text(
                     text = "${telemetry.ramUsedMb} / ${telemetry.ramTotalMb} MB",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.Monospace,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 val ramFrac = if (telemetry.ramTotalMb > 0)
                     (telemetry.ramUsedMb.toFloat() / telemetry.ramTotalMb.toFloat()).coerceIn(0f, 1f)
@@ -1263,14 +1387,14 @@ fun LiveTelemetrySection(telemetry: MainViewModel.TelemetryState) {
                 LinearProgressIndicator(
                     progress = { ramFrac },
                     modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                    color = if (ramFrac < 0.8f) Color(0xFF00E5FF) else Color(0xFFFF5252),
+                    color = if (ramFrac < 0.8f) NeonCyan else DangerRed,
                     trackColor = Color(0x33FFFFFF)
                 )
             }
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            TelemetryCard(Modifier.weight(1f), 105.dp, "BATTERY / POWER", Icons.Default.DeviceThermostat, Color(0xFFFF9100)) {
+            TelemetryCard(Modifier.weight(1f), 105.dp, "BATTERY / POWER", Icons.Default.DeviceThermostat, ElectricOrange) {
                 val bt = telemetry.batteryTempCelsius
                 Text(
                     text = bt?.let { "$it°C" } ?: "--",
@@ -1278,7 +1402,7 @@ fun LiveTelemetrySection(telemetry: MainViewModel.TelemetryState) {
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     ),
-                    color = if (bt == null) grey else if (bt < 40f) Color(0xFF00E676) else Color(0xFFFF5252)
+                    color = if (bt == null) grey else if (bt < 40f) NeonGreen else DangerRed
                 )
                 val pw = telemetry.powerDrainMw
                 Text(
@@ -1291,14 +1415,14 @@ fun LiveTelemetrySection(telemetry: MainViewModel.TelemetryState) {
                     color = grey
                 )
             }
-            TelemetryCard(Modifier.weight(1f), 105.dp, "DISPLAY", Icons.Default.Speed, Color(0xFF00E5FF)) {
+            TelemetryCard(Modifier.weight(1f), 105.dp, "DISPLAY", Icons.Default.Speed, NeonCyan) {
                 Text(
                     text = "${hz}Hz",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     ),
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Text(text = telemetry.displayResolution, fontSize = 10.sp, color = grey, maxLines = 1)
             }
@@ -1317,11 +1441,12 @@ private fun TelemetryCard(
 ) {
     Card(
         modifier = modifier.height(height),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, Color(0x12FFFFFF))
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
+            modifier = Modifier.fillMaxSize().padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -1329,8 +1454,23 @@ private fun TelemetryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(title, fontSize = 11.sp, color = Color(0xFF90A4AE), fontWeight = FontWeight.Bold)
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        letterSpacing = 0.7.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = TextMuted
+                )
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(tint.copy(alpha = 0.13f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
+                }
             }
             content()
         }
@@ -1348,25 +1488,8 @@ fun HudControlsCard(
     onOpenOverlaySettings: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(
-                text = "FLOATING OVERLAY & SERVICES",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    letterSpacing = 1.2.sp,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
+    HbCard(contentPadding = PaddingValues(16.dp)) {
+            SectionHeader(title = "Floating overlay & services")
 
             // Telemetry HUD Toggle Row
             Row(
@@ -1375,10 +1498,10 @@ fun HudControlsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Floating Telemetry HUD", fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("Live draggable FPS, frametime curve, and temp", fontSize = 12.sp, color = Color(0xFF90A4AE))
+                    Text("Floating Telemetry HUD", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("Live draggable FPS, frametime curve, and temp", fontSize = 12.sp, color = TextMuted)
                 }
-                Switch(
+                HbSwitch(
                     checked = isHudRunning,
                     onCheckedChange = { onToggleHud() },
                     modifier = Modifier.testTag("switch_hud_overlay")
@@ -1394,8 +1517,8 @@ fun HudControlsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Screen Center Crosshair", fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("Hardware crosshair overlay for shooter games", fontSize = 12.sp, color = Color(0xFF90A4AE))
+                    Text("Screen Center Crosshair", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("Hardware crosshair overlay for shooter games", fontSize = 12.sp, color = TextMuted)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     IconButton(
@@ -1404,7 +1527,7 @@ fun HudControlsCard(
                     ) {
                         Icon(Icons.Default.Tune, contentDescription = "Crosshair Settings", tint = MaterialTheme.colorScheme.primary)
                     }
-                    Switch(
+                    HbSwitch(
                         checked = isCrosshairActive,
                         onCheckedChange = { onToggleCrosshair() },
                         modifier = Modifier.testTag("switch_crosshair")
@@ -1437,14 +1560,13 @@ fun HudControlsCard(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(if (isAccessibilityActive) Color(0xFF00E676) else Color(0xFFFF5252))
+                                .background(if (isAccessibilityActive) NeonGreen else DangerRed)
                         )
                         Text("Game Detection", fontSize = 12.sp)
                     }
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -1457,41 +1579,20 @@ fun GameLauncherSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "GAME PROFILES & ART PRE-COMPILER",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    letterSpacing = 1.2.sp,
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "${games.size} Apps",
-                fontSize = 12.sp,
-                color = Color(0xFF90A4AE)
-            )
-        }
+        SectionHeader(
+            title = "Game profiles",
+            trailing = "${games.size} apps"
+        )
 
         if (games.isEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
+            HbCard(contentPadding = PaddingValues(24.dp)) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No games detected on this device", color = Color(0xFF8B9CB3))
+                    Text("No games detected on this device", color = TextSecondary)
                 }
             }
         } else {
@@ -1522,22 +1623,32 @@ fun GameCard(
     onConfigureGameMode: () -> Unit
 ) {
     val modeLabel = game.gameMode.replaceFirstChar { it.uppercase() }
+    val statusText = when {
+        game.isCompiled -> "AOT shaders ready"
+        game.isOptimized -> "Auto-boost ${game.targetRefreshRate}Hz"
+        else -> "Standard profile"
+    }
+    val statusColor = when {
+        game.isCompiled -> NeonGreen
+        game.isOptimized -> NeonCyan
+        else -> TextSecondary
+    }
     Card(
         modifier = Modifier
-            .width(170.dp)
-            .height(210.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        border = if (game.isOptimized)
-            CardDefaults.outlinedCardBorder().copy(
-                brush = Brush.verticalGradient(listOf(Color(0xFF00E5FF), Color(0xFF00E676)))
-            )
-        else null
+            .width(176.dp)
+            .height(218.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = if (game.isOptimized) {
+            BorderStroke(1.dp, Brush.verticalGradient(listOf(NeonCyan.copy(alpha = 0.75f), NeonGreen.copy(alpha = 0.45f))))
+        } else {
+            BorderStroke(1.dp, Color(0x12FFFFFF))
+        }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(13.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -1553,17 +1664,19 @@ fun GameCard(
                         bitmap = bitmap,
                         contentDescription = game.appName,
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(Color(0xFF2C394B), RoundedCornerShape(8.dp)),
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, Color(0x10FFFFFF), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.SportsEsports, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Default.SportsEsports, contentDescription = null, tint = TextSecondary)
                     }
                 }
 
@@ -1575,58 +1688,66 @@ fun GameCard(
                         Icon(
                             Icons.Default.Tune,
                             contentDescription = "Game mode",
-                            tint = Color(0xFF00E5FF),
+                            tint = TextSecondary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                    Switch(
+                    HbSwitch(
                         checked = game.isOptimized,
-                        onCheckedChange = { onToggleOpt() },
-                        modifier = Modifier.size(36.dp)
+                        onCheckedChange = { onToggleOpt() }
                     )
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = game.appName,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     maxLines = 1,
-                    color = Color.White
+                    color = TextPrimary
                 )
-                Text(
-                    text = (if (game.isCompiled) "✓ AOT Shaders Compiled"
-                    else if (game.isOptimized) "Auto-Boost ${game.targetRefreshRate}Hz"
-                    else "Standard Profile") + " · $modeLabel",
-                    fontSize = 10.sp,
-                    color = if (game.isCompiled) Color(0xFF00E676)
-                    else if (game.isOptimized) Color(0xFF00E5FF)
-                    else Color(0xFF8B9CB3)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Text(
+                        text = "$statusText · $modeLabel",
+                        fontSize = 10.sp,
+                        color = statusColor,
+                        maxLines = 1
+                    )
+                }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 OutlinedButton(
                     onClick = onCompile,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(30.dp),
-                    shape = RoundedCornerShape(6.dp),
-                    contentPadding = PaddingValues(0.dp)
+                        .height(32.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    border = BorderStroke(1.dp, Color(0x1FFFFFFF))
                 ) {
-                    Text("Pre-compile AOT", fontSize = 10.sp)
+                    Text("Pre-compile AOT", fontSize = 10.sp, color = TextSecondary)
                 }
 
                 Button(
                     onClick = onLaunch,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(34.dp),
-                    shape = RoundedCornerShape(8.dp),
+                        .height(36.dp),
+                    shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00E5FF),
-                        contentColor = Color(0xFF001E2B)
+                        containerColor = NeonCyan,
+                        contentColor = DarkBackground
                     )
                 ) {
                     Text("Launch", fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -1656,7 +1777,7 @@ private fun GameModeDialog(
                 Text(
                     "Android 12+ only. Applied when this game comes to the front with Optimize on; support varies by device.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF90A4AE)
+                    color = TextMuted
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     modes.forEach { (id, label) ->
@@ -1706,7 +1827,7 @@ fun CrosshairConfigDialog(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Color Picker Row
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Reticle Color", fontSize = 12.sp, color = Color(0xFF90A4AE))
+                    Text("Reticle Color", fontSize = 12.sp, color = TextMuted)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -1719,7 +1840,7 @@ fun CrosshairConfigDialog(
                                     .background(Color(color))
                                     .border(
                                         width = if (selectedColor == color) 3.dp else 1.dp,
-                                        color = if (selectedColor == color) Color.White else Color.Transparent,
+                                        color = if (selectedColor == color) TextPrimary else Color.Transparent,
                                         shape = CircleShape
                                     )
                                     .clickable { selectedColor = color }
@@ -1730,7 +1851,7 @@ fun CrosshairConfigDialog(
 
                 // Size Slider
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Reticle Size: ${selectedSize}dp", fontSize = 12.sp, color = Color(0xFF90A4AE))
+                    Text("Reticle Size: ${selectedSize}dp", fontSize = 12.sp, color = TextMuted)
                     Slider(
                         value = selectedSize.toFloat(),
                         onValueChange = { selectedSize = it.toInt() },
@@ -1741,7 +1862,7 @@ fun CrosshairConfigDialog(
 
                 // Stroke Slider
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Stroke Thickness: ${selectedStroke}dp", fontSize = 12.sp, color = Color(0xFF90A4AE))
+                    Text("Stroke Thickness: ${selectedStroke}dp", fontSize = 12.sp, color = TextMuted)
                     Slider(
                         value = selectedStroke.toFloat(),
                         onValueChange = { selectedStroke = it.toInt() },
@@ -1792,15 +1913,15 @@ fun AdbGuideDialog(onDismiss: () -> Unit) {
                 Text(
                     "Android 11 or newer. No computer needed.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF00E5FF)
+                    color = NeonCyan
                 )
                 steps.forEach { step ->
-                    Text(step, style = MaterialTheme.typography.bodySmall, color = Color(0xFF8B9CB3))
+                    Text(step, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
                 Text(
                     "Shizuku may need to be started again after a reboot.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF00E676)
+                    color = NeonGreen
                 )
             }
         },

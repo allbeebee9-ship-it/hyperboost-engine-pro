@@ -9,18 +9,31 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hyperboost.engine.ui.theme.DarkBackground
+import com.hyperboost.engine.ui.theme.DarkOutline
+import com.hyperboost.engine.ui.theme.DarkSurfaceHighlight
+import com.hyperboost.engine.ui.theme.NeonCyan
+import com.hyperboost.engine.ui.theme.NeonGreen
+import com.hyperboost.engine.ui.theme.TextMuted
+import com.hyperboost.engine.ui.theme.TextSecondary
 
 /**
  * Standard dashboard card. Pass [accent] to tint the border and background
@@ -31,6 +44,7 @@ fun HbCard(
     modifier: Modifier = Modifier,
     accent: Color? = null,
     onClick: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(18.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(20.dp)
@@ -38,13 +52,17 @@ fun HbCard(
     val container = if (accent != null) accent.copy(alpha = 0.07f).compositeOver(surface) else surface
     val colors = CardDefaults.cardColors(containerColor = container)
     val elevation = CardDefaults.cardElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
-    val border = BorderStroke(1.dp, accent?.copy(alpha = 0.55f) ?: Color(0x14FFFFFF))
+    val border = if (accent != null) {
+        BorderStroke(1.dp, Brush.linearGradient(listOf(accent.copy(alpha = 0.72f), NeonGreen.copy(alpha = 0.32f))))
+    } else {
+        BorderStroke(1.dp, Color(0x12FFFFFF))
+    }
     val body: @Composable () -> Unit = {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(contentPadding),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
             content = content
         )
     }
@@ -66,6 +84,107 @@ fun HbCard(
             elevation = elevation,
             border = border
         ) { body() }
+    }
+}
+
+/** Small accent bar + uppercase label used above every dashboard group. */
+@Composable
+fun SectionHeader(
+    title: String,
+    trailing: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(14.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.verticalGradient(listOf(NeonCyan, NeonGreen)))
+            )
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    letterSpacing = 1.35.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = TextSecondary
+            )
+        }
+        if (trailing != null) {
+            Text(
+                text = trailing,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted
+            )
+        }
+    }
+}
+
+/** Themed switch used everywhere so active controls share one accent language. */
+@Composable
+fun HbSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        enabled = enabled,
+        modifier = modifier,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = DarkBackground,
+            checkedTrackColor = NeonCyan,
+            checkedBorderColor = NeonCyan,
+            uncheckedThumbColor = TextSecondary,
+            uncheckedTrackColor = DarkSurfaceHighlight,
+            uncheckedBorderColor = DarkOutline,
+            disabledCheckedThumbColor = TextMuted,
+            disabledUncheckedThumbColor = TextMuted
+        )
+    )
+}
+
+/** Rounded icon tile; the gradient version marks an active module. */
+@Composable
+fun HbIconBadge(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    active: Boolean = false,
+    tint: Color = NeonCyan,
+    size: Dp = 40.dp
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(13.dp))
+            .then(
+                if (active) {
+                    Modifier.background(Brush.linearGradient(listOf(tint, NeonGreen)))
+                } else {
+                    Modifier
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, Color(0x10FFFFFF), RoundedCornerShape(13.dp))
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (active) DarkBackground else tint,
+            modifier = Modifier.size(size * 0.5f)
+        )
     }
 }
 
@@ -110,10 +229,12 @@ fun StatTile(
     valueColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val shape = RoundedCornerShape(14.dp)
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, Color(0x0DFFFFFF), shape)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {

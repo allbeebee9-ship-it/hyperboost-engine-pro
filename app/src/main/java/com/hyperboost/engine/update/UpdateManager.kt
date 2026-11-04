@@ -281,6 +281,30 @@ object UpdateManager {
         )
 
     /**
+     * Turns the Markdown release body into readable dialog text. The update dialog is a plain
+     * AlertDialog, so raw `#`, `**` and backticks look like broken formatting.
+     */
+    internal fun formatReleaseNotes(raw: String): String {
+        if (raw.isBlank()) return ""
+        return raw.replace("\r\n", "\n")
+            .lineSequence()
+            .map { original ->
+                var line = original.trimEnd()
+                line = line.replace(Regex("^\\s{0,3}#{1,6}\\s*"), "")
+                line = line.replace(Regex("^\\s{0,3}[-*+]\\s+"), "• ")
+                line = line.replace("**", "").replace("__", "")
+                line = line.replace(Regex("`([^`]*)`"), "$1")
+                line = line.replace(Regex("!\\[([^]]*)]\\([^)]*\\)"), "$1")
+                line = line.replace(Regex("\\[([^]]+)]\\(([^)]*)\\)"), "$1 ($2)")
+                line = line.replace(Regex("^\\s*[-_]{3,}\\s*$"), "")
+                line.trimEnd()
+            }
+            .joinToString("\n")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
+    }
+
+    /**
      * Checks if the downloaded APK is signed with the same certificate as the installed app.
      * Prevents Android's "App not installed as package conflicts with an existing package" error.
      */

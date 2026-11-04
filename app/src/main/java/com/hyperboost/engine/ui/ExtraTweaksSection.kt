@@ -18,6 +18,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hyperboost.engine.services.AutoTapService
+import com.hyperboost.engine.ui.components.HbSwitch
+import com.hyperboost.engine.ui.components.SectionHeader
+import com.hyperboost.engine.ui.theme.TextMuted
 
 /**
  * Tools ported from Benimaru Tool's feature set, plus their safety rails:
@@ -38,14 +41,7 @@ fun ExtraTweaksSection(viewModel: MainViewModel) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "MORE ROOTLESS TOOLS",
-            style = MaterialTheme.typography.labelMedium.copy(
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = MaterialTheme.colorScheme.primary
-        )
+        SectionHeader(title = "More rootless tools", trailing = "6 tools")
 
         EasyToggleCard(
             title = "Disable Window Blurs",
@@ -81,7 +77,8 @@ fun ExtraTweaksSection(viewModel: MainViewModel) {
                 subtitle = "Battery Saver off, then measure gyro Hz",
                 icon = Icons.Default.Sensors,
                 tint = Color(0xFFB388FF),
-                onClick = { viewModel.runGyroCheck() }
+                onClick = { viewModel.runGyroCheck() },
+                compact = true
             )
             ActionTile(
                 modifier = Modifier.weight(1f),
@@ -91,7 +88,8 @@ fun ExtraTweaksSection(viewModel: MainViewModel) {
                 tint = Color(0xFF00E676),
                 onClick = {
                     if (isAutoTapRunning) viewModel.stopAutoTap() else showAutoTapDialog = true
-                }
+                },
+                compact = true
             )
         }
 
@@ -228,7 +226,7 @@ private fun AutoTapDialog(
                         "Automated input can get accounts banned in some games. " +
                         "It stops by itself after ${AutoTapService.MAX_RUN_MS / 60_000} minutes.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF90A4AE),
+                    color = TextMuted,
                     fontSize = 11.sp
                 )
             }
@@ -272,7 +270,7 @@ private fun FreezeAppsDialog(
                     "Freeze stops an app until you unfreeze it. Background limit can delay its notifications and sync. " +
                         "Only user-installed apps are listed; Restore returns changed policies.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF90A4AE),
+                    color = TextMuted,
                     fontSize = 11.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -297,7 +295,7 @@ private fun FreezeAppsDialog(
                                     Text(
                                         text = app.packageName,
                                         fontSize = 11.sp,
-                                        color = Color(0xFF90A4AE),
+                                        color = TextMuted,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -305,14 +303,14 @@ private fun FreezeAppsDialog(
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Freeze", fontSize = 10.sp, modifier = Modifier.padding(end = 4.dp))
-                                        Switch(
+                                        HbSwitch(
                                             checked = app.frozen,
                                             onCheckedChange = { viewModel.setAppFrozen(app.packageName, it) }
                                         )
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Limit", fontSize = 10.sp, modifier = Modifier.padding(end = 4.dp))
-                                        Switch(
+                                        HbSwitch(
                                             checked = app.backgroundRestricted,
                                             onCheckedChange = {
                                                 viewModel.setAppBackgroundRestricted(app.packageName, it)

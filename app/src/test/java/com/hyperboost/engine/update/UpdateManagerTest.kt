@@ -66,6 +66,22 @@ class UpdateManagerTest {
     }
 
     @Test
+    fun releaseNotesStripMarkdownFormatting() {
+        val raw = """
+            ## What's new in 1.8.1
+
+            - **Fixed:** the `%` sign in the progress line.
+            * **Game Mode** is available.
+            ---
+            See [the release page](https://example.com).
+        """.trimIndent()
+        assertEquals(
+            "What's new in 1.8.1\n\n• Fixed: the % sign in the progress line.\n• Game Mode is available.\n\nSee the release page (https://example.com).",
+            UpdateManager.formatReleaseNotes(raw)
+        )
+    }
+
+    @Test
     fun compatibilityResult_types() {
         val compatible = CompatibilityResult.Compatible
         val cannotVerify = CompatibilityResult.CannotVerify

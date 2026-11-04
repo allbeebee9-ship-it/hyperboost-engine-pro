@@ -16,6 +16,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hyperboost.engine.ui.components.HbCard
+import com.hyperboost.engine.ui.components.HbIconBadge
+import com.hyperboost.engine.ui.components.SectionHeader
+import com.hyperboost.engine.ui.theme.NeonCyan
+import com.hyperboost.engine.ui.theme.TextMuted
+import com.hyperboost.engine.ui.theme.TextPrimary
 
 /** System customization, visuals, stability and automation tools (all restored by "Restore"). */
 @Composable
@@ -148,11 +154,7 @@ fun AdvancedTweaksSection(viewModel: MainViewModel) {
 
 @Composable
 private fun GroupLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp, fontWeight = FontWeight.SemiBold),
-        color = MaterialTheme.colorScheme.primary
-    )
+    SectionHeader(title = text)
 }
 
 @Composable
@@ -165,33 +167,49 @@ private fun ChoiceCard(
     onSelect: (Int) -> Unit
 ) {
     val active = selected != 0
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (active) Color(0xFF13202E) else MaterialTheme.colorScheme.surfaceVariant
-        )
+    HbCard(
+        accent = if (active) NeonCyan else null,
+        contentPadding = PaddingValues(16.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(
-                    icon, contentDescription = null,
-                    tint = if (active) Color(0xFF00E5FF) else Color.White,
-                    modifier = Modifier.size(20.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            HbIconBadge(
+                icon = icon,
+                active = active,
+                tint = NeonCyan,
+                size = 38.dp
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
                 )
-                Column {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (active) Color(0xFF00E5FF) else Color.White
-                    )
-                    Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF90A4AE), fontSize = 11.sp)
-                }
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
             }
-            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                options.forEachIndexed { index, label ->
-                    FilterChip(selected = index == selected, onClick = { onSelect(index) }, label = { Text(label) })
-                }
+        }
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEachIndexed { index, label ->
+                FilterChip(
+                    selected = index == selected,
+                    onClick = { onSelect(index) },
+                    label = { Text(label) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = NeonCyan.copy(alpha = 0.16f),
+                        selectedLabelColor = NeonCyan,
+                        labelColor = TextMuted
+                    )
+                )
             }
         }
     }
@@ -205,32 +223,45 @@ private fun SessionCard(selected: Set<String>, onToggle: (String) -> Unit) {
         "stayawake" to "Stay awake",
         "landscape" to "Landscape lock"
     )
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                Column {
-                    Text(
-                        text = "Game Session Automation",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Runs when a game with Optimize on comes to the front, and undoes only what it switched on when you leave",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF90A4AE),
-                        fontSize = 11.sp
-                    )
-                }
+    HbCard(contentPadding = PaddingValues(16.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            HbIconBadge(
+                icon = Icons.Default.AutoFixHigh,
+                tint = NeonCyan,
+                size = 38.dp
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Game Session Automation",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary
+                )
+                Text(
+                    text = "Runs when a game with Optimize on comes to the front, and undoes only what it switched on when you leave",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    fontSize = 11.sp
+                )
             }
-            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                options.forEach { (key, label) ->
-                    FilterChip(selected = key in selected, onClick = { onToggle(key) }, label = { Text(label) })
-                }
+        }
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (key, label) ->
+                FilterChip(
+                    selected = key in selected,
+                    onClick = { onToggle(key) },
+                    label = { Text(label) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = NeonCyan.copy(alpha = 0.16f),
+                        selectedLabelColor = NeonCyan,
+                        labelColor = TextMuted
+                    )
+                )
             }
         }
     }

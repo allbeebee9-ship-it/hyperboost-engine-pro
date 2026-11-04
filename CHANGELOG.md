@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.2 - 2026-11-03
+
+- Refreshed the dashboard with a cleaner header, consistent cards and controls, and a clearer Master Boost panel.
+- Improved the game cards, telemetry, tools, and overlay screens.
+- Update notes now display cleanly.
+- If the in-app update does not start, install this release's APK manually once.
+
 ## 1.8.1 - 2026-10-28
 
 - In-app feedback is delivered through Firebase again. The 1.8.0 build was published without its Firebase configuration, so it could only use the **Send on GitHub** fallback.
