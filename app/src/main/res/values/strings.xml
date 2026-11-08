@@ -1,16 +1,16 @@
 <resources>
-    <string name="app_name">HyperBoost</string>
-    <string name="app_full_title">HyperBoost Engine Pro</string>
-    <string name="quick_settings_tile_label">HyperBoost Boost</string>
-    <string name="accessibility_service_name">HyperBoost Game Detection</string>
-    <string name="accessibility_service_description">Detects the active foreground game so HyperBoost can apply your saved performance profile. This service is optional; Auto Tap uses Shizuku and does not need accessibility.</string>
+    <string name="app_name">RED BOOST</string>
+    <string name="app_full_title">RED BOOST</string>
+    <string name="quick_settings_tile_label">RED BOOST</string>
+    <string name="accessibility_service_name">RED BOOST Game Detection</string>
+    <string name="accessibility_service_description">Detects the active foreground game so RED BOOST can apply your saved performance profile. This service is optional; Auto Tap uses Shizuku and does not need accessibility.</string>
     
     <!-- Shizuku & System Status -->
     <string name="status_shizuku_authorized">Shizuku Elevated Service Active</string>
     <string name="status_shizuku_unauthorized">Shizuku Permission Required</string>
     <string name="status_shizuku_dead">Shizuku Service Not Running</string>
     <string name="shizuku_instruction_title">Rootless ADB Shell Authorization</string>
-    <string name="shizuku_instruction_desc">HyperBoost uses Shizuku to execute elevated system commands (display resolution, refresh rate, Vulkan forcing, cache trimming) safely without root access.</string>
+    <string name="shizuku_instruction_desc">RED BOOST uses Shizuku to execute elevated system commands (display resolution, refresh rate, Vulkan forcing, cache trimming) safely without root access.</string>
     <string name="btn_request_shizuku">Authorize Shizuku</string>
     <string name="btn_refresh_shizuku">Re-check Connection</string>
     
@@ -36,6 +36,6 @@
     <string name="hud_crosshair_desc">Hardware-rendered floating screen center crosshair for shooters</string>
     <string name="btn_enable_overlay">Grant Overlay Permission</string>
     <string name="btn_enable_accessibility">Enable Automation Service</string>
-    <string name="overlay_notification_title">HyperBoost Telemetry Active</string>
+    <string name="overlay_notification_title">RED BOOST Telemetry Active</string>
     <string name="overlay_notification_text">Monitoring live system metrics and rendering HUD overlay.</string>
 </resources>
